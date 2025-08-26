@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "alfatch_vmc_ps2"
+name = "alfatch_vmc"
 version = "0.1.0"
 dependencies = [
  "byteorder",
