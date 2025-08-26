@@ -1,7 +1,4 @@
-use crate::vmc::vmc_core::argument_handler;
-
-pub mod model;
-pub mod vmc;
+use alfatch_vmc::vmc::vmc_core::argument_handler;
 
 fn main() {
     argument_handler();
