@@ -45,10 +45,10 @@ pub struct VmcSuperblock {
 // VMC filesystem entry structure
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-struct RawFSEntry {
-    mode: u16,
+pub struct RawFSEntry {
+    pub mode: u16,
     _pad1: u16,
-    length: u32,
+    pub length: u32,
     created_sec: u8,
     created_min: u8,
     created_hour: u8,
@@ -71,8 +71,8 @@ struct RawFSEntry {
     _pad5: [u8; 412],
 }
 
-// Parse FS Entry from raw bytes
-fn parse_fs_entry_from_bytes(bytes: &[u8]) -> Option<RawFSEntry> {
+// Parse FS Entry from raw bytes - made public for use in vmc_core
+pub fn parse_fs_entry_from_bytes(bytes: &[u8]) -> Option<RawFSEntry> {
     if bytes.len() < 512 {
         return None;
     }
@@ -241,7 +241,8 @@ pub struct FSEntry {
 }
 
 impl FSEntry {
-    fn from_raw(raw: &RawFSEntry) -> Option<Self> {
+    // Made this method public so it can be used in vmc_core.rs
+    pub fn from_raw(raw: &RawFSEntry) -> Option<Self> {
         let mode_val = raw.mode;
         let exists = (mode_val & EM_EXISTS) != 0;
 
@@ -255,8 +256,27 @@ impl FSEntry {
             return None;
         }
 
-        // Mode 0x8427 indicates directory entries in VMC
-        let is_directory = mode_val == 0x8427 || (mode_val & EM_DIRECTORY) != 0;
+        // Better directory detection logic for VMC files
+        // 0x8427 is definitely a directory (for . and ..)
+        // 0x8497 can be either file or directory - need to check the name
+        let is_directory = if mode_val == 0x8427 {
+            true
+        } else if mode_val == 0x8497 {
+            // For 0x8497, determine by name patterns
+            // Directories usually don't have file extensions or are special names
+            name == "."
+                || name == ".."
+                || (!name.contains('.')
+                    && !name
+                        .chars()
+                        .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '-'))
+        } else if mode_val == 0x8417 {
+            // 0x8417 seems to be used for some files
+            false
+        } else {
+            // Other modes - use the EM_DIRECTORY flag as fallback
+            (mode_val & EM_DIRECTORY) != 0
+        };
 
         Some(FSEntry {
             name,
@@ -303,7 +323,7 @@ pub struct FatTable {
 }
 
 pub struct Vmc {
-    file: File,
+    pub file: File, // Made public for access from vmc_core.rs
     pub superblock: VmcSuperblock,
     fat: FatTable,
 }
@@ -361,7 +381,8 @@ impl Vmc {
         free_count
     }
 
-    fn build_cluster_chain(&self, start_cluster: u32) -> Vec<u32> {
+    // Made this method public so it can be used from vmc_core.rs
+    pub fn build_cluster_chain(&self, start_cluster: u32) -> Vec<u32> {
         let mut chain = Vec::new();
         let mut current = start_cluster;
         let mut processed = HashSet::new();

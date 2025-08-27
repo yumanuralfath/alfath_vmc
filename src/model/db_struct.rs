@@ -1,6 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct TitleEntry {
     pub id: String,
     pub title: String,
@@ -10,5 +10,4 @@ pub struct TitleEntry {
     pub publisher: String,
     pub region: String,
     pub release_date: String,
-    pub serial: String,
 }
