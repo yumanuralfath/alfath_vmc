@@ -17,12 +17,12 @@ pub fn validate_mc_file(path: &str) -> io::Result<bool> {
 }
 
 #[derive(Debug)]
-struct ExtractedId {
-    id: String,
-    suffix: String,
+pub struct ExtractedId {
+    pub id: String,
+    pub suffix: String,
 }
 
-fn extract_game_id_from_save(save_name: &str) -> ExtractedId {
+pub fn extract_game_id_from_save(save_name: &str) -> ExtractedId {
     let mut id = save_name.to_uppercase();
 
     let suffixes = [
@@ -51,7 +51,7 @@ fn extract_game_id_from_save(save_name: &str) -> ExtractedId {
 }
 
 // Updated function to use dynamic lookup from TSV
-fn get_game_title(save_name: &str) -> String {
+pub fn get_game_title(save_name: &str) -> String {
     let extracted = extract_game_id_from_save(save_name);
 
     // Try to get game info from TSV database
