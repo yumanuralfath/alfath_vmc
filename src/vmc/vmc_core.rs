@@ -50,61 +50,65 @@ pub fn extract_game_id_from_save(save_name: &str) -> ExtractedId {
     }
 }
 
-// Updated function to use dynamic lookup from TSV
+fn normalize_game_id(game_id: &str) -> String {
+    const SPECIAL_PREFIXES: [&str; 3] = ["ES", "AS", "IS"];
+
+    const REGION_PREFIXES: [&str; 10] = [
+        "SLUS", "SLES", "SCUS", "SCES", "SLPS", "SLPM", "SLKA", "SLPM", "TCNYC", "BEMU",
+    ];
+
+    if let Some(stripped) = game_id.strip_prefix('B') {
+        for prefix in SPECIAL_PREFIXES {
+            if stripped.starts_with(prefix) {
+                return stripped[1..].to_string();
+            }
+        }
+    }
+
+    for prefix in REGION_PREFIXES {
+        if game_id.starts_with(prefix) {
+            return game_id.to_string();
+        }
+    }
+
+    game_id.to_string()
+}
+
 pub fn get_game_title(save_name: &str) -> String {
     let extracted = extract_game_id_from_save(save_name);
+    let normalized_id = normalize_game_id(&extracted.id);
 
-    // Try to get game info from TSV database
-    match search_info_from_id(&extracted.id) {
-        Ok(game_info) => {
-            let show_suffix = matches!(
-                extracted.suffix.as_str(),
-                "2014OPT" | "2014000" | "DAT0" | "BEMU5YYY" | "TCNYC"
-            );
+    fn format_with_suffix(title: &str, suffix: &str) -> String {
+        const SUFFIX_WHITELIST: [&str; 5] = ["2014OPT", "2014000", "DAT0", "BEMU5YYY", "TCNYC"];
 
-            if show_suffix && !extracted.suffix.is_empty() {
-                format!("{} ({})", game_info.title, extracted.suffix)
-            } else {
-                game_info.title
-            }
+        if SUFFIX_WHITELIST.contains(&suffix) && !suffix.is_empty() {
+            format!("{title} ({suffix})")
+        } else {
+            title.to_string()
         }
-        Err(_) => {
-            // Fallback to hardcoded database if TSV lookup fails
-            let games_db = [
-                ("BESLES-55673", "PES 2014: Pro Evolution Soccer"),
-                ("BASLUS-21050", "Burnout 3: Takedown"),
-                ("BASLUS-21846", "Sonic Unleashed"),
-                ("BASCUS-97436", "Gran Turismo 4"),
-                ("BASLUS-21672", "Guitar Hero III: Legends of Rock"),
-                ("BISLPS-25912", "Soul Eater: Battle Resonance"),
-                ("BASLUS-21106", "True Crime: New York City"),
-            ];
+    }
 
-            let base_title = games_db
-                .iter()
-                .find(|(id, _)| {
-                    *id == extracted.id
-                        || extracted.id.starts_with(*id)
-                        || id.starts_with(&extracted.id)
-                })
-                .map(|(_, title)| *title);
+    if let Ok(game_info) = search_info_from_id(&normalized_id) {
+        return format_with_suffix(&game_info.title, &extracted.suffix);
+    }
 
-            match base_title {
-                Some(title) => {
-                    let show_suffix = matches!(
-                        extracted.suffix.as_str(),
-                        "2014OPT" | "2014000" | "DAT0" | "BEMU5YYY" | "TCNYC"
-                    );
+    let games_db = [
+        ("SLPM-74234", "Final Fantasy XII"),
+        ("SCUS-97102", "Shadow of the Colossus"),
+        ("SLES-82009", "Gran Turismo 4"),
+        ("SLKA-25250", "Tekken 5"),
+    ];
 
-                    if show_suffix && !extracted.suffix.is_empty() {
-                        format!("{} ({})", title, extracted.suffix)
-                    } else {
-                        title.to_string()
-                    }
-                }
-                None => format!("Unknown Game ({save_name})"),
-            }
-        }
+    let base_title = games_db
+        .iter()
+        .find(|(id, _)| {
+            *id == extracted.id || extracted.id.starts_with(*id) || id.starts_with(&extracted.id)
+        })
+        .map(|(_, title)| *title);
+
+    match base_title {
+        Some(title) => format_with_suffix(title, &extracted.suffix),
+        None => format!("Unknown Game ({save_name})"),
     }
 }
 

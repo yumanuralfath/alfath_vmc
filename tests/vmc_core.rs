@@ -1,4 +1,4 @@
-use alfatch_vmc::vmc::vmc_core::{ExtractedId, extract_game_id_from_save};
+use alfatch_vmc::vmc::vmc_core::{ExtractedId, extract_game_id_from_save, get_game_title};
 
 #[test]
 fn test_extract_game_id_from_save() {
@@ -39,24 +39,80 @@ fn test_extract_game_id_from_save() {
         assert_eq!(result.suffix, expected.suffix);
     }
 }
-//
-// #[test]
-// fn test_get_game_title_with_fallback() {
-//     let test_cases = vec![
-//         (
-//             "BESLES55673SAVEDATA",
-//             "PES 2014: Pro Evolution Soccer (SAVEDATA)",
-//         ),
-//         ("BASLUS21050DAT0", "Burnout 3: Takedown (DAT0)"),
-//         ("BASCUS97436", "Gran Turismo 4"),
-//         ("UNKNOWN_ID", "Unknown Game (UNKNOWN_ID)"),
-//     ];
-//
-//     for (input, expected) in test_cases {
-//         let result = get_game_title(input);
-//         assert_eq!(result, expected);
-//     }
-// }
+
+#[test]
+fn test_extract_game_id_with_hyphens() {
+    let result = extract_game_id_from_save("BESLES-55673SAVEDATA");
+    assert_eq!(result.id, "BESLES-55673");
+    assert_eq!(result.suffix, "SAVEDATA");
+}
+
+#[test]
+fn test_get_game_title_with_fallback() {
+    let test_cases = vec![
+        // SAVEDATA is not in the show_suffix list, so it shouldn't be shown
+        ("BESLES-55673SAVEDATA", "PES 2014: Pro Evolution Soccer"),
+        // DAT0 is in the show_suffix list, so it should be shown
+        ("BASLUS-21050DAT0", "Burnout 3: Takedown (DAT0)"),
+        ("BASCUS-97436", "Gran Turismo 4"),
+        ("UNKNOWN_ID", "Unknown Game (UNKNOWN_ID)"),
+        // Test cases for suffixes that should be shown
+        (
+            "BESLES-556732014OPT",
+            "PES 2014: Pro Evolution Soccer (2014OPT)",
+        ),
+        (
+            "BESLES-556732014000",
+            "PES 2014: Pro Evolution Soccer (2014000)",
+        ),
+        (
+            "BESLES-55673BEMU5YYY",
+            "PES 2014: Pro Evolution Soccer (BEMU5YYY)",
+        ),
+        (
+            "BESLES-55673TCNYC",
+            "PES 2014: Pro Evolution Soccer (TCNYC)",
+        ),
+    ];
+
+    for (input, expected) in test_cases {
+        let result = get_game_title(input);
+        assert_eq!(result, expected, "Failed for input: {input}");
+    }
+}
+
+#[test]
+fn test_suffix_extraction_logic() {
+    // Test that only specific suffixes are shown
+    let test_cases = vec![
+        ("BESLES-55673SAVEDATA", ""),         // SAVEDATA should not be shown
+        ("BASLUS-21050DAT0", "DAT0"),         // DAT0 should be shown
+        ("BESLES-556732014OPT", "2014OPT"),   // 2014OPT should be shown
+        ("BESLES-556732014000", "2014000"),   // 2014000 should be shown
+        ("BESLES-55673BEMU5YYY", "BEMU5YYY"), // BEMU5YYY should be shown
+        ("BESLES-55673TCNYC", "TCNYC"),       // TCNYC should be shown
+    ];
+
+    for (input, expected_suffix) in test_cases {
+        let extracted = extract_game_id_from_save(input);
+        let show_suffix = matches!(
+            extracted.suffix.as_str(),
+            "2014OPT" | "2014000" | "DAT0" | "BEMU5YYY" | "TCNYC"
+        );
+
+        if show_suffix {
+            assert_eq!(
+                extracted.suffix, expected_suffix,
+                "Suffix should be shown for: {input}"
+            );
+        } else {
+            assert!(
+                expected_suffix.is_empty(),
+                "Suffix should not be shown for: {input}"
+            );
+        }
+    }
+}
 //
 // #[test]
 // fn test_fs_entry_from_raw() {
