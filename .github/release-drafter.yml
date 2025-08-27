@@ -1,0 +1,19 @@
+name-template: "🚀 Release v$NEXT_PATCH_VERSION"
+tag-template: "v$NEXT_PATCH_VERSION"
+categories:
+  - title: "✨ Fitur Baru"
+    labels:
+      - feature
+      - enhancement
+  - title: "🐛 Perbaikan Bug"
+    labels:
+      - bug
+  - title: "🛠️ Lainnya"
+    labels:
+      - chore
+      - documentation
+      - refactor
+change-template: "- $TITLE (#$NUMBER)"
+template: |
+  ## Perubahan di versi ini
+  $CHANGES
